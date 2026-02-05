@@ -7,13 +7,16 @@ const generateToken = (id) => {
     });
 };
 
-// @desc    Auth user & get token
-// @route   POST /api/auth/login
-// @access  Public
+
 const authUser = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
+
+    if (user && user.isDeleted) {
+        res.status(401).json({ message: 'Account has been deactivated. Please contact support.' });
+        return;
+    }
 
     if (user && (await user.matchPassword(password))) {
         res.json({
@@ -28,9 +31,7 @@ const authUser = async (req, res) => {
     }
 };
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
+
 const registerUser = async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -60,9 +61,7 @@ const registerUser = async (req, res) => {
     }
 };
 
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
+
 const getUserProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
 
@@ -78,9 +77,7 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
+
 const updateUserProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
 
@@ -105,12 +102,61 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
-// @desc    Get all users
-// @route   GET /api/admin/users
-// @access  Private/Admin
+
 const getUsers = async (req, res) => {
     const users = await User.find({});
     res.json(users);
+};
+
+
+const deleteUser = async (req, res) => {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+        if (user.isAdmin) {
+            res.status(400).json({ message: 'Can not delete admin user' });
+            return;
+        }
+        // Soft delete
+        user.isDeleted = true;
+        await user.save();
+        res.json({ message: 'User deactivated' });
+    } else {
+        res.status(404).json({ message: 'User not found' });
+    }
+};
+
+
+const getUserById = async (req, res) => {
+    const user = await User.findById(req.params.id).select('-password');
+
+    if (user) {
+        res.json(user);
+    } else {
+        res.status(404).json({ message: 'User not found' });
+    }
+};
+
+
+const updateUser = async (req, res) => {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+        user.name = req.body.name || user.name;
+        user.email = req.body.email || user.email;
+        user.isAdmin = req.body.isAdmin ?? user.isAdmin;
+
+        const updatedUser = await user.save();
+
+        res.json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            isAdmin: updatedUser.isAdmin,
+        });
+    } else {
+        res.status(404).json({ message: 'User not found' });
+    }
 };
 
 module.exports = {
@@ -119,4 +165,7 @@ module.exports = {
     getUserProfile,
     updateUserProfile,
     getUsers,
+    deleteUser,
+    getUserById,
+    updateUser,
 };

@@ -21,9 +21,10 @@ const orderSchema = mongoose.Schema(
             },
         ],
         shippingAddress: {
+            name: { type: String, required: false },
             address: { type: String, required: true },
             city: { type: String, required: true },
-            postalCode: { type: String, required: true },
+            postalCode: { type: String, required: true }, // Fixed typo in previous step? No, it was correct.
             country: { type: String, required: true },
         },
         paymentMethod: {
